@@ -29,8 +29,10 @@ Instead of manually searching for another port, you can use `port-finder` to che
 ## Requirements
 
 - Node.js 22 or later.
-- macOS, Linux or Windows for the JavaScript API.
-- The CLI's listening-port listing currently uses macOS `lsof`. The CLI's `check` and `find` commands have only been verified on macOS.
+- The JavaScript API uses Node.js TCP APIs.
+- The test suite has been verified on macOS with Node.js 22.23.5 and 24.14.0.
+- Linux and Windows have not been verified and should be treated as unverified platforms.
+- The CLI's listening-port listing uses macOS `lsof` and is macOS-only. The CLI's `check` and `find` commands have also only been verified on macOS.
 
 ## Installation
 
@@ -44,6 +46,13 @@ You can also run it without installing globally:
 
 ```bash
 npx @atul_133/port-finder
+```
+
+Pass CLI commands after the package name:
+
+```bash
+npx @atul_133/port-finder check 3000
+npx @atul_133/port-finder find 3000-4000
 ```
 
 To use it inside your Node.js project:
@@ -111,6 +120,8 @@ Occupied (2): 3001, 3005
 Available (9): 3000, 3002-3004, 3006-3010
 ```
 
+Consecutive available ports are compacted into ranges in the output.
+
 ### 4. Find an available port
 
 ```bash
@@ -131,6 +142,8 @@ You can also search within a specific range:
 port-finder find 3000-4000
 ```
 
+**Note:** The CLI reports the port number but does not keep it reserved.
+
 ### 5. Specify a host
 
 ```bash
@@ -138,6 +151,12 @@ port-finder check 3000 --host 127.0.0.1
 ```
 
 Checks port `3000` on the specified address.
+
+You can also use:
+
+```bash
+port-finder find 3000-4000 --host 127.0.0.1
+```
 
 ### 6. View help
 
@@ -147,13 +166,30 @@ port-finder --help
 
 Displays available commands, options and examples.
 
+### CLI options and exit codes
+
+| Option | Commands | Description |
+|---|---|---|
+| `--host <host>` | `check`, `find` | Check or bind a specific host |
+| `-h`, `--help` | All commands | Display usage information |
+
+The CLI uses these exit codes:
+
+| Exit code | Meaning |
+|---|---|
+| `0` | Command completed successfully. An occupied result from `check` is still a successful check. |
+| `1` | Runtime or port-probe failure. |
+| `2` | Invalid command-line usage. |
+
+The default listing command relies on macOS `lsof`; it is not currently supported on Linux or Windows.
+
 ## Using port-finder in JavaScript
 
 You can also import `port-finder` into your Node.js application.
 
 The package provides three main functions:
 
-| Function | Purpose | Returns |
+| **Function** | **Purpose** | **Returns** |
 |---|---|---|
 | `isPortFree()` | Checks whether a port is available | `boolean` |
 | `findPort()` | Finds an available port | Port number |
@@ -163,7 +199,7 @@ The package provides three main functions:
 
 Use `isPortFree()` to check whether a particular port can be used.
 
-```javascript
+```js
 const { isPortFree } = require('@atul_133/port-finder');
 
 async function main() {
@@ -181,13 +217,13 @@ main().catch(console.error);
 
 The function returns:
 
-- `true` if the port can be bound.
-- `false` if another process is already using it.
+- `true` if the port can be bound on the selected host.
+- `false` if the port is already in use on that host.
 - An error if availability cannot be determined.
 
 You can also specify a host:
 
-```javascript
+```js
 const available = await isPortFree(3000, {
     host: '127.0.0.1'
 });
@@ -197,7 +233,7 @@ const available = await isPortFree(3000, {
 
 Use `findPort()` when you need an available port number.
 
-```javascript
+```js
 const { findPort } = require('@atul_133/port-finder');
 
 async function main() {
@@ -211,15 +247,17 @@ main().catch(console.error);
 
 You can also provide a starting port:
 
-```javascript
+```js
 const port = await findPort(3000);
 ```
 
 This searches from port `3000` upwards.
 
+If no candidate is available, the function rejects with `NoAvailablePortError`.
+
 To restrict the search to a particular range:
 
-```javascript
+```js
 const port = await findPort({
     start: 3000,
     end: 3010
@@ -228,7 +266,7 @@ const port = await findPort({
 
 You can exclude specific ports:
 
-```javascript
+```js
 const port = await findPort({
     start: 3000,
     end: 3010,
@@ -238,7 +276,7 @@ const port = await findPort({
 
 You can also specify a host:
 
-```javascript
+```js
 const port = await findPort({
     start: 3000,
     end: 3010,
@@ -250,9 +288,9 @@ const port = await findPort({
 
 Use `findServer()` when you want to find an available port and immediately start a TCP server on it.
 
-Unlike `findPort()`, this function actually binds the port and returns a server that is already listening.
+Unlike `findPort()`, this function actually binds the port and returns a server that is already listening. This avoids the gap between checking a port and binding it later.
 
-```javascript
+```js
 const { findServer } = require('@atul_133/port-finder');
 
 async function main() {
@@ -268,7 +306,7 @@ main().catch(console.error);
 
 You can also specify a preferred starting port:
 
-```javascript
+```js
 const { server, port } = await findServer(3000);
 ```
 
@@ -276,7 +314,7 @@ If port `3000` is occupied, it searches upwards for another available port.
 
 To search within a specific range:
 
-```javascript
+```js
 const { server, port } = await findServer({
     start: 3000,
     end: 3010
@@ -285,7 +323,7 @@ const { server, port } = await findServer({
 
 You can exclude particular ports:
 
-```javascript
+```js
 const { server, port } = await findServer({
     start: 3000,
     end: 3010,
@@ -295,7 +333,7 @@ const { server, port } = await findServer({
 
 You can also specify the host:
 
-```javascript
+```js
 const { server, port } = await findServer({
     start: 3000,
     end: 3010,
@@ -313,7 +351,7 @@ Remember to call `server.close()` when you no longer need the server.
 
 Although all three functions work with ports, they solve different problems.
 
-| Function | What it does | Keeps the port occupied? |
+| **Function** | **What it does** | **Keeps the port occupied?** |
 |---|---|---|
 | `isPortFree()` | Checks whether a port is available | No |
 | `findPort()` | Finds an available port and returns its number | No |
@@ -331,7 +369,7 @@ Although all three functions work with ports, they solve different problems.
 
 The following errors are exported:
 
-| Error class | Purpose |
+| **Error class** | **Purpose** |
 |---|---|
 | `PortFinderError` | Base error class |
 | `InvalidPortError` | Invalid port number |
@@ -346,7 +384,7 @@ You can import these classes and use `instanceof` to identify errors.
 
 Example:
 
-```javascript
+```js
 const {
     findPort,
     NoAvailablePortError
@@ -378,6 +416,8 @@ main();
 
 `findPort()` checks whether a port is available and then closes its temporary socket.
 
+The CLI's `find` command has the same check-and-release behaviour.
+
 Another application could occupy that port before your application starts listening.
 
 If you need to find and bind a port without leaving a check-then-bind gap, use `findServer()`.
@@ -395,9 +435,53 @@ You are responsible for managing and closing it.
 
 This difference is intentional.
 
+### 4. Host-specific checks on macOS/BSD
+
+A check against `127.0.0.1` does not necessarily detect a listener bound to `0.0.0.0` on macOS/BSD.
+
+Conversely, a wildcard bind may behave differently when another process is listening only on a specific address.
+
+The result is specific to the host address being probed; it is not a universal statement that the port is unused on every interface.
+
+### 5. Privileged ports
+
+Ports below `1024` require elevated permissions on macOS and Linux.
+
+If the operating system denies the bind, the package reports a permission error rather than treating the port as available.
+
+### 6. Large port ranges
+
+Port ranges are searched sequentially.
+
+A large range containing many occupied ports can take longer to scan. The current implementation does not impose a scan timeout.
+
+### 7. IPv6 support
+
+IPv6 checks are supported where the operating system provides IPv6.
+
+IPv6-specific tests may be skipped when IPv6 is unavailable.
+
+### 8. Platform verification
+
+The test suite has been verified on macOS with Node.js 22.23.5 and 24.14.0.
+
+Linux and Windows have not been verified; behaviour on those platforms should be considered unverified.
+
+### 9. Listening-port discovery
+
+The CLI's default listing command uses macOS `lsof`. It is currently macOS-only.
+
 ## Examples
 
-For more practical usage, check the [`examples/`](./examples) directory.
+For more practical usage, check the [`examples/`](https://github.com/atulpanda2006/port-finder/blob/main/examples) directory.
+
+## Scope
+
+`port-finder` works with local TCP port binding.
+
+A successful local availability check does not prove that a port is reachable from another computer, through a firewall, or over the public internet.
+
+It also does not configure firewall rules or network routing.
 
 ## Contributing
 
@@ -419,7 +503,9 @@ npm test
 
 ## License
 
-This project is licensed under the [MIT License](./LICENSE).
+This project is licensed under the [MIT License](https://github.com/atulpanda2006/port-finder/blob/main/LICENSE).
+
+Copyright © 2026 Atul Panda.
 
 ## Author
 
