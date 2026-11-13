@@ -1,0 +1,22 @@
+# Installed dependencies
+node_modules/
+
+# Test coverage output
+coverage/
+
+# Packed package artifacts from `npm pack`
+*.tgz
+
+# Logs
+npm-debug.log*
+yarn-error.log*
+*.log
+
+# Local environment files (never commit secrets)
+.env
+.env.local
+
+# Editor and OS noise
+.DS_Store
+.idea/
+.vscode/

@@ -1,0 +1,45 @@
+{
+  "name": "@atul_133/port-finder",
+  "version": "1.1.0",
+  "description": "Find an available TCP port or bind a listening server on one. Race-free binding, predictable port ranges and actionable errors. Zero dependencies.",
+  "keywords": [
+    "port",
+    "port-finder",
+    "portfinder",
+    "free-port",
+    "available-port",
+    "open-port",
+    "get-port",
+    "race-free",
+    "port-binding",
+    "tcp",
+    "net",
+    "bind",
+    "server",
+    "dev-server"
+  ],
+  "author": "Atul Panda",
+  "license": "MIT",
+  "type": "commonjs",
+  "main": "index.js",
+  "bin": {
+    "port-finder": "bin/port-finder.js"
+  },
+  "files": [
+    "index.js",
+    "lib",
+    "examples",
+    "bin"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "test": "node --test",
+    "example": "node examples/basic.js",
+    "prepublishOnly": "npm test && npm pack --dry-run"
+  }
+}
